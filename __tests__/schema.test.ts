@@ -1,113 +1,64 @@
 import { describe, it, expect } from "vitest";
+import { productSchema, storeSchema, settingsSchema, businessTypeSchema, DEFAULT_CATEGORY_MARKUPS } from "@/lib/schema";
 
-import {
-  candidatesSchema,
-  departmentsSchema,
-  workspaceSchema,
-} from "@/lib/schema";
+const BASE_PRODUCT = {
+  name: "純米大吟醸 〇〇",
+  maker: "〇〇酒造",
+  origin: "長野県",
+  costPrice: 2000,
+  comment: "フルーティーな香り",
+  flavor: "淡麗辛口",
+  category: "日本酒",
+  color: "",
+  spark: "",
+  body: "",
+  variety: "",
+  imageFile: "sake-001.jpg",
+  status: "active",
+} as const;
 
-import positionsData from "@/data/positions.json";
-import candidatesData from "@/data/candidates.json";
-import workspaceData from "@/data/workspace.json";
-
-describe("data/*.json schema validation", () => {
-  it("data/positions.json は departmentsSchema を満たす", () => {
-    const result = departmentsSchema.safeParse(positionsData);
+describe("productSchema", () => {
+  it("有効な商品データを受け入れる", () => {
+    const result = productSchema.safeParse(BASE_PRODUCT);
     expect(result.success).toBe(true);
   });
 
-  it("data/candidates.json は candidatesSchema を満たす", () => {
-    const result = candidatesSchema.safeParse(candidatesData);
-    expect(result.success).toBe(true);
-  });
-
-  it("data/workspace.json は workspaceSchema を満たす", () => {
-    const result = workspaceSchema.safeParse(workspaceData);
-    expect(result.success).toBe(true);
-  });
-});
-
-describe("schema rejects invalid data", () => {
-  it("departmentsSchema は配列を期待する", () => {
-    expect(departmentsSchema.safeParse({}).success).toBe(false);
-    expect(departmentsSchema.safeParse(null).success).toBe(false);
-  });
-
-  it("candidate は stage が StageKey でないと不可", () => {
-    expect(
-      candidatesSchema.safeParse([
-        {
-          id: "x",
-          profile: {
-            name: "x",
-            birthday: "",
-            source: "",
-            email: "",
-            phone: "",
-            address: "",
-            recruiter: "",
-            desiredSalaryMin: "",
-            desiredSalaryMax: "",
-            availableStartDate: "",
-            careerText: "",
-            motivationFull: "",
-          },
-          scorecards: [],
-          stage: "unknown-stage",
-        },
-      ]).success,
-    ).toBe(false);
-  });
-
-  it("workspaceSchema は name と icon を要求する", () => {
-    expect(workspaceSchema.safeParse({ name: "" }).success).toBe(false);
-    expect(workspaceSchema.safeParse({ icon: "" }).success).toBe(false);
-  });
-});
-
-describe("candidate.archived の取り扱い", () => {
-  const baseCandidate = {
-    id: "c-archived-test",
-    profile: {
-      name: "テスト 太郎",
-      birthday: "",
-      source: "",
-      email: "",
-      phone: "",
-      address: "",
-      recruiter: "",
-      desiredSalaryMin: "",
-      desiredSalaryMax: "",
-      availableStartDate: "",
-      careerText: "",
-      motivationFull: "",
-    },
-    scorecards: [],
-    stage: "screening" as const,
-  };
-
-  it("archived 未指定なら false がデフォルトで埋まる", () => {
-    const result = candidatesSchema.safeParse([baseCandidate]);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data[0].archived).toBe(false);
-    }
-  });
-
-  it("archived: true を許容する", () => {
-    const result = candidatesSchema.safeParse([
-      { ...baseCandidate, archived: true },
-    ]);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data[0].archived).toBe(true);
-    }
-  });
-
-  it("archived が boolean でなければ不可", () => {
-    const result = candidatesSchema.safeParse([
-      { ...baseCandidate, archived: "yes" },
-    ]);
+  it("不正なカテゴリを拒否する", () => {
+    const result = productSchema.safeParse({ ...BASE_PRODUCT, category: "スパークリング" });
     expect(result.success).toBe(false);
+  });
+
+  it("ビール・ジン・シードル・ウイスキーを受け入れる", () => {
+    for (const cat of ["ビール", "ジン", "シードル", "ウイスキー"] as const) {
+      const result = productSchema.safeParse({ ...BASE_PRODUCT, category: cat });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("inactive ステータスを受け入れる", () => {
+    const result = productSchema.safeParse({ ...BASE_PRODUCT, status: "inactive" });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("storeSchema", () => {
+  it("有効な店舗データを受け入れる", () => {
+    const result = storeSchema.safeParse({
+      id: "s-001",
+      name: "〇〇酒場",
+      categoryMarkups: { ...DEFAULT_CATEGORY_MARKUPS },
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("businessTypeSchema", () => {
+  it("有効な業態データを受け入れる", () => {
+    const result = businessTypeSchema.safeParse({
+      id: "izakaya",
+      label: "居酒屋",
+      categoryPriority: ["日本酒", "焼酎", "ビール", "ウイスキー", "ワイン"],
+    });
+    expect(result.success).toBe(true);
   });
 });

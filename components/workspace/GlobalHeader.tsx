@@ -2,15 +2,7 @@
 
 import { Settings } from "lucide-react";
 
-import { type Department } from "@/lib/schema";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { type Store, type Settings as SettingsType } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -21,44 +13,43 @@ import {
 import { SettingsDialogContent } from "@/components/workspace/SettingsDialog";
 
 type GlobalHeaderProps = {
-  departmentTitle: string;
-  positionTitle: string;
-  candidateName: string;
-  departments: Department[];
-  onAddDepartment: (name: string) => void;
-  onDeleteDepartment: (deptId: string) => void;
+  workspaceName: string;
+  businessTypeLabel: string | null;
+  selectedCount: number;
+  stores: Store[];
+  settings: SettingsType;
+  onSaveStores: (stores: Store[]) => void;
+  onSaveSettings: (settings: SettingsType) => void;
 };
 
 export function GlobalHeader({
-  departmentTitle,
-  positionTitle,
-  candidateName,
-  departments,
-  onAddDepartment,
-  onDeleteDepartment,
+  workspaceName,
+  businessTypeLabel,
+  selectedCount,
+  stores,
+  settings,
+  onSaveStores,
+  onSaveSettings,
 }: GlobalHeaderProps) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
-      <Breadcrumb
-        className="min-w-0 flex-1 overflow-hidden"
-        aria-label="パンくず"
-      >
-        <BreadcrumbList className="flex-nowrap text-[11px]">
-          <BreadcrumbItem className="shrink-0">
-            <BreadcrumbLink>{departmentTitle}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem className="shrink-0">
-            <BreadcrumbLink>{positionTitle}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem className="min-w-0">
-            <BreadcrumbPage className="truncate font-medium">
-              {candidateName}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="text-muted-foreground">{workspaceName}</span>
+          {businessTypeLabel && (
+            <>
+              <span className="text-muted-foreground/40">/</span>
+              <span className="font-medium text-foreground">{businessTypeLabel}</span>
+            </>
+          )}
+          {selectedCount > 0 && (
+            <>
+              <span className="text-muted-foreground/40">/</span>
+              <span className="text-muted-foreground">{selectedCount} 件選択中</span>
+            </>
+          )}
+        </div>
+      </div>
 
       <Dialog>
         <Tooltip>
@@ -70,7 +61,7 @@ export function GlobalHeader({
                     variant="ghost"
                     size="icon-sm"
                     className="shrink-0 text-muted-foreground hover:text-foreground"
-                    aria-label="ワークスペース設定"
+                    aria-label="設定"
                   >
                     <Settings />
                   </Button>
@@ -78,12 +69,13 @@ export function GlobalHeader({
               />
             }
           />
-          <TooltipContent side="bottom">ワークスペース設定</TooltipContent>
+          <TooltipContent side="bottom">設定</TooltipContent>
         </Tooltip>
         <SettingsDialogContent
-          departments={departments}
-          onAddDepartment={onAddDepartment}
-          onDeleteDepartment={onDeleteDepartment}
+          stores={stores}
+          settings={settings}
+          onSaveStores={onSaveStores}
+          onSaveSettings={onSaveSettings}
         />
       </Dialog>
     </header>

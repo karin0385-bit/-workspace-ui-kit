@@ -1,0 +1,42 @@
+[
+  {
+    "id": "japanese",
+    "label": "和風店",
+    "categoryPriority": ["日本酒", "焼酎", "ウイスキー", "ワイン", "ビール"]
+  },
+  {
+    "id": "izakaya",
+    "label": "居酒屋",
+    "categoryPriority": ["日本酒", "焼酎", "ビール", "ウイスキー", "ワイン"]
+  },
+  {
+    "id": "western",
+    "label": "洋風店",
+    "categoryPriority": ["ワイン", "ウイスキー", "ジン", "ビール", "日本酒"]
+  },
+  {
+    "id": "chinese",
+    "label": "中華",
+    "categoryPriority": ["日本酒", "焼酎", "ワイン", "ビール", "ウイスキー"]
+  },
+  {
+    "id": "hotel",
+    "label": "ホテル",
+    "categoryPriority": ["ワイン", "ウイスキー", "ジン", "シードル", "日本酒"]
+  },
+  {
+    "id": "bistro",
+    "label": "ビストロ",
+    "categoryPriority": ["ワイン", "シードル", "ウイスキー", "ジン", "日本酒"]
+  },
+  {
+    "id": "multicultural",
+    "label": "無国籍",
+    "categoryPriority": ["ワイン", "ジン", "ウイスキー", "ビール", "日本酒", "焼酎"]
+  },
+  {
+    "id": "cafe",
+    "label": "カフェ",
+    "categoryPriority": ["ワイン", "シードル", "ビール", "ウイスキー", "日本酒"]
+  }
+]
