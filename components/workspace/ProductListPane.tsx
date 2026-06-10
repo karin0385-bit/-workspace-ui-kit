@@ -4,11 +4,10 @@
  * Pane 2: フィルター結果の商品リスト。チェックで最大5件まで提案商品に追加できる。
  */
 
-import Image from "next/image";
 import { Check, Package } from "lucide-react";
 
 import { type Product } from "@/lib/schema";
-import { Badge } from "@/components/ui/badge";
+import { ProductImage } from "@/components/primitives/ProductImage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ProductListPaneProps = {
@@ -16,6 +15,7 @@ type ProductListPaneProps = {
   selectedProducts: Product[];
   maxSelect: number;
   onToggleProduct: (product: Product) => void;
+  productImageUrls?: Readonly<Record<string, string>>;
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -30,6 +30,7 @@ export function ProductListPane({
   selectedProducts,
   maxSelect,
   onToggleProduct,
+  productImageUrls,
 }: ProductListPaneProps) {
   const selectedNames = new Set(selectedProducts.map((p) => p.name));
   const canSelectMore = selectedProducts.length < maxSelect;
@@ -78,18 +79,15 @@ export function ProductListPane({
                   ].join(" ")}
                 >
                   {/* チェックマーク or 画像 */}
-                  <div className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted">
-                    {product.imageFile ? (
-                      <Image
-                        src={`/products/${product.imageFile}`}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                        sizes="40px"
-                      />
-                    ) : (
-                      <Package className="m-auto mt-2 size-5 text-muted-foreground/40" />
-                    )}
+                  <div className="relative size-10 shrink-0 overflow-hidden rounded-md">
+                    <ProductImage
+                      imageFile={product.imageFile}
+                      productName={product.name}
+                      localImageUrls={productImageUrls}
+                      className="size-10 rounded-md"
+                      sizes="40px"
+                      placeholderIconClassName="size-5"
+                    />
                     {isSelected && (
                       <div className="absolute inset-0 flex items-center justify-center bg-primary/80">
                         <Check className="size-5 text-primary-foreground" />

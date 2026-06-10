@@ -6,7 +6,7 @@
  */
 
 import { useRef } from "react";
-import { Upload, X } from "lucide-react";
+import { ImageIcon, Upload, X } from "lucide-react";
 
 import { type BusinessType, type Filter, CATEGORY_ORDER } from "@/lib/schema";
 import { parseCsv } from "@/lib/data/csv";
@@ -32,7 +32,9 @@ type BusinessTypePaneProps = {
   filter: Filter;
   onFilterChange: (filter: Filter) => void;
   onLoadProducts: (products: Product[]) => void;
+  onLoadProductImages: (urls: Record<string, string>) => void;
   productCount: number;
+  productImageCount: number;
 };
 
 export function BusinessTypePane({
@@ -41,9 +43,12 @@ export function BusinessTypePane({
   filter,
   onFilterChange,
   onLoadProducts,
+  onLoadProductImages,
   productCount,
+  productImageCount,
 }: BusinessTypePaneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageFolderRef = useRef<HTMLInputElement>(null);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -60,6 +65,20 @@ export function BusinessTypePane({
       }
     };
     reader.readAsText(file, "shift_jis");
+    e.target.value = "";
+  }
+
+  function handleImageFolderChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+
+    const urls: Record<string, string> = {};
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) continue;
+      urls[file.name] = URL.createObjectURL(file);
+    }
+
+    onLoadProductImages(urls);
     e.target.value = "";
   }
 
@@ -93,6 +112,26 @@ export function BusinessTypePane({
               <Upload className="size-3.5" />
               CSV を読み込む
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start gap-2"
+              onClick={() => imageFolderRef.current?.click()}
+            >
+              <ImageIcon className="size-3.5" />
+              画像フォルダを読み込む
+            </Button>
+            <input
+              ref={(node) => {
+                imageFolderRef.current = node;
+                if (node) node.setAttribute("webkitdirectory", "");
+              }}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageFolderChange}
+            />
             <input
               ref={fileInputRef}
               type="file"
@@ -103,8 +142,12 @@ export function BusinessTypePane({
             {productCount > 0 && (
               <p className="text-xs text-muted-foreground">
                 {productCount} 件読み込み済み
+                {productImageCount > 0 && ` / 画像 ${productImageCount} 件`}
               </p>
             )}
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              CSV「画像」列には .jpg 等のファイル名を入れ、続けて画像フォルダを読み込んでください。列が「images」だけでも、商品名が一致する画像を自動で探します。
+            </p>
           </SidebarGroupContent>
         </SidebarGroup>
 

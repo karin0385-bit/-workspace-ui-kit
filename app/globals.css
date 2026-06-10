@@ -219,3 +219,55 @@
     @apply font-sans;
   }
 }
+
+/* ===== 提案書 / 見積書の個別印刷 ===== */
+[data-print-only] {
+  display: none;
+}
+
+#sake-print-portal {
+  display: none;
+}
+
+#sake-print-portal [data-print-only] {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  /* アプリ本体を非表示にし、印刷用ポータルだけ表示 */
+  body.sake-printing > *:not(#sake-print-portal) {
+    display: none !important;
+  }
+
+  body.sake-printing #sake-print-portal {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  body.sake-printing #sake-print-portal img {
+    max-width: 100%;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body.sake-printing #sake-print-portal [data-screen-only] {
+    display: none !important;
+  }
+
+  body.sake-printing #sake-print-portal [data-print-only] {
+    display: block !important;
+  }
+
+  body.sake-printing #sake-print-portal table[data-print-only] {
+    display: table !important;
+  }
+}

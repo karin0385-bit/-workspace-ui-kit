@@ -11,6 +11,7 @@ import {
   CATEGORY_ORDER,
   DEFAULT_CATEGORY_MARKUPS,
 } from "@/lib/schema";
+import { normalizeCategoryMarkups } from "@/lib/data/storage";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -57,6 +58,25 @@ export function SettingsDialogContent({
 
   function handleDeleteStore(id: string) {
     onSaveStores(stores.filter((s) => s.id !== id));
+  }
+
+  function handleUpdateStoreMarkup(
+    storeId: string,
+    category: (typeof CATEGORY_ORDER)[number],
+    value: number,
+  ) {
+    const next = stores.map((store) => {
+      if (store.id !== storeId) return store;
+      const parsed = storeSchema.safeParse({
+        ...store,
+        categoryMarkups: normalizeCategoryMarkups({
+          ...store.categoryMarkups,
+          [category]: value,
+        }),
+      });
+      return parsed.success ? parsed.data : store;
+    });
+    onSaveStores(next);
   }
 
   function handleSaveSettings() {
@@ -136,6 +156,9 @@ export function SettingsDialogContent({
         {/* 店舗マスター */}
         <Field>
           <FieldLabel>店舗マスター</FieldLabel>
+          <p className="text-xs text-muted-foreground">
+            販売単価 = 仕入価格 ÷ 掛け率（例: 仕入 800 円・0.8 → 1,000 円）
+          </p>
           <ScrollArea className="max-h-52">
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
               {stores.map((store) => (
@@ -153,11 +176,29 @@ export function SettingsDialogContent({
                       <Trash2 />
                     </Button>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
                     {CATEGORY_ORDER.map((cat) => (
-                      <span key={cat} className="text-xs text-muted-foreground">
-                        {cat}: ×{(store.categoryMarkups[cat] ?? 1).toFixed(2)}
-                      </span>
+                      <div key={cat} className="flex items-center gap-1.5">
+                        <label className="w-24 shrink-0 truncate text-xs text-muted-foreground">
+                          {cat}
+                        </label>
+                        <Input
+                          type="number"
+                          min={0.01}
+                          max={1}
+                          step={0.01}
+                          value={store.categoryMarkups[cat]}
+                          onChange={(e) =>
+                            handleUpdateStoreMarkup(
+                              store.id,
+                              cat,
+                              parseFloat(e.target.value) || 0.8,
+                            )
+                          }
+                          className="h-7 w-16 text-center text-xs"
+                        />
+                        <span className="text-xs text-muted-foreground">÷</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -188,19 +229,19 @@ export function SettingsDialogContent({
                   </label>
                   <Input
                     type="number"
-                    min={0}
-                    max={10}
+                    min={0.01}
+                    max={1}
                     step={0.01}
                     value={newMarkups[cat]}
                     onChange={(e) =>
                       setNewMarkups((m) => ({
                         ...m,
-                        [cat]: parseFloat(e.target.value) || 0,
+                        [cat]: parseFloat(e.target.value) || 0.8,
                       }))
                     }
                     className="h-7 w-16 text-center text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">掛け</span>
+                  <span className="text-xs text-muted-foreground">÷</span>
                 </div>
               ))}
             </div>

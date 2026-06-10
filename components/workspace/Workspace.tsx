@@ -10,7 +10,7 @@
  * Pane 4            : 見積書作成（編集の本拠地）
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useLayoutEffect, useEffect, useRef } from "react";
 
 import {
   type BusinessType,
@@ -22,7 +22,14 @@ import {
   DEFAULT_FILTER,
   DEFAULT_SETTINGS,
 } from "@/lib/schema";
-import { loadStores, saveStores, loadSettings, saveSettings } from "@/lib/data/storage";
+import { loadStores, saveStores, loadSettings, saveSettings, loadSelectedStoreId, saveSelectedStoreId } from "@/lib/data/storage";
+import {
+  buildPricedQuoteLines,
+  calcSellingPrice,
+  dedupeQuoteLines,
+  productKey,
+  resolveActiveStore,
+} from "@/lib/computed/quote";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { GlobalHeader } from "@/components/workspace/GlobalHeader";
 import { BusinessTypePane } from "@/components/workspace/BusinessTypePane";
@@ -55,16 +62,62 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
+  const [manualUnitPrices, setManualUnitPrices] = useState<Record<string, number>>({});
+  const [productImageUrls, setProductImageUrls] = useState<Record<string, string>>({});
   const [pane4Open, setPane4Open] = useState(false);
 
-  useEffect(() => {
-    setStores(loadStores());
+  const storesRef = useRef(stores);
+  storesRef.current = stores;
+  const selectedStoreIdRef = useRef(selectedStoreId);
+  selectedStoreIdRef.current = selectedStoreId;
+  const maxSelectRef = useRef(filter.maxSelect);
+  maxSelectRef.current = filter.maxSelect;
+
+  useLayoutEffect(() => {
+    const loadedStores = loadStores();
+    setStores(loadedStores);
     setSettings(loadSettings());
+
+    const savedId = loadSelectedStoreId();
+    const initialId =
+      savedId && loadedStores.some((s) => s.id === savedId)
+        ? savedId
+        : loadedStores[0]?.id ?? null;
+    if (initialId) {
+      setSelectedStoreId(initialId);
+      selectedStoreIdRef.current = initialId;
+      saveSelectedStoreId(initialId);
+    }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      Object.values(productImageUrls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [productImageUrls]);
+
+  const activeStore = resolveActiveStore(stores, selectedStoreId);
+  const activeStoreId = activeStore?.id ?? null;
+
+  const pricedQuoteLines = useMemo(
+    () => buildPricedQuoteLines(quoteLines, activeStore, manualUnitPrices),
+    [quoteLines, activeStore, manualUnitPrices],
+  );
+
   const handleSaveStores = useCallback((next: Store[]) => {
-    setStores(next);
     saveStores(next);
+    const normalized = loadStores();
+    setStores(normalized);
+
+    let activeId = selectedStoreIdRef.current;
+    if (!activeId && normalized.length > 0) {
+      activeId = normalized[0].id;
+      setSelectedStoreId(activeId);
+      selectedStoreIdRef.current = activeId;
+      saveSelectedStoreId(activeId);
+    }
+
+    setManualUnitPrices({});
   }, []);
 
   const handleSaveSettings = useCallback((next: Settings) => {
@@ -77,6 +130,14 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
     setProducts(loaded);
     setSelectedProducts([]);
     setQuoteLines([]);
+    setManualUnitPrices({});
+  }, []);
+
+  const handleLoadProductImages = useCallback((urls: Record<string, string>) => {
+    setProductImageUrls((prev) => {
+      Object.values(prev).forEach((url) => URL.revokeObjectURL(url));
+      return urls;
+    });
   }, []);
 
   /** フィルター変更。業態が変わったら選択もリセット。 */
@@ -85,12 +146,9 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
     if (next.businessTypeId !== filter.businessTypeId) {
       setSelectedProducts([]);
       setQuoteLines([]);
+      setManualUnitPrices({});
     }
   }, [filter.businessTypeId]);
-
-  /** 現在の maxSelect を最新値で参照するため ref で保持する。 */
-  const maxSelectRef = useRef(filter.maxSelect);
-  maxSelectRef.current = filter.maxSelect;
 
   /** フィルター適用後の商品一覧（派生計算）。 */
   const filteredProducts = useMemo(() => {
@@ -106,7 +164,9 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
     }
     if (filter.origin.trim() !== "") {
       const kw = filter.origin.trim().toLowerCase();
-      result = result.filter((p) => p.origin.toLowerCase().includes(kw));
+      result = result.filter((p) =>
+        `${p.origin} ${p.locality}`.toLowerCase().includes(kw),
+      );
     }
 
     const bt = businessTypes.find((b) => b.id === filter.businessTypeId);
@@ -117,56 +177,70 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
     return result;
   }, [products, filter, businessTypes]);
 
-  /** 商品カテゴリの掛け率を取得するヘルパー。 */
-  const getMarkup = useCallback((product: Product): number => {
-    const store = stores.find((s) => s.id === selectedStoreId);
-    return store?.categoryMarkups[product.category] ?? 1.0;
-  }, [stores, selectedStoreId]);
-
   /** 商品の選択状態をトグル（filter.maxSelect 件まで）。 */
   const toggleProduct = useCallback((product: Product) => {
+    const key = productKey(product);
+    const store = resolveActiveStore(storesRef.current, selectedStoreIdRef.current);
+
     setSelectedProducts((prev) => {
-      const exists = prev.some((p) => p.name === product.name);
+      const exists = prev.some((p) => productKey(p) === key);
       if (exists) {
-        const next = prev.filter((p) => p.name !== product.name);
-        setQuoteLines((ql) => ql.filter((l) => l.product.name !== product.name));
-        return next;
+        return prev.filter((p) => productKey(p) !== key);
       }
-      // ref 経由で常に最新の maxSelect を参照する
       if (prev.length >= maxSelectRef.current) return prev;
-      const markup = getMarkup(product);
-      setQuoteLines((ql) => [
-        ...ql,
-        { product, quantity: 1, sellingPrice: Math.ceil(product.costPrice * markup) },
-      ]);
       return [...prev, product];
     });
-  }, [getMarkup]);
 
-  /** 店舗変更時にカテゴリ別掛け率で販売価格を再計算する。 */
+    setManualUnitPrices((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+    setQuoteLines((ql) => {
+      const exists = ql.some((l) => productKey(l.product) === key);
+      if (exists) {
+        return ql.filter((l) => productKey(l.product) !== key);
+      }
+      if (ql.length >= maxSelectRef.current) return ql;
+      const next = [
+        ...ql,
+        {
+          product,
+          quantity: 1,
+          sellingPrice: calcSellingPrice(product, store),
+        },
+      ];
+      return dedupeQuoteLines(next);
+    });
+  }, []);
+
+  /** 店舗変更時に手動単価をリセットし掛率を再適用する。 */
   const handleStoreChange = useCallback((storeId: string | null) => {
-    setSelectedStoreId(storeId);
-    const store = stores.find((s) => s.id === storeId);
-    setQuoteLines((ql) =>
-      ql.map((l) => {
-        const markup = store?.categoryMarkups[l.product.category] ?? 1.0;
-        return { ...l, sellingPrice: Math.ceil(l.product.costPrice * markup) };
-      }),
-    );
-  }, [stores]);
+    const resolvedId = storeId ?? storesRef.current[0]?.id ?? null;
+    setSelectedStoreId(resolvedId);
+    selectedStoreIdRef.current = resolvedId;
+    saveSelectedStoreId(resolvedId);
+    setManualUnitPrices({});
+  }, []);
 
   const updateQuoteLine = useCallback(
-    (productName: string, field: "quantity" | "sellingPrice", value: number) => {
+    (lineKey: string, field: "quantity" | "sellingPrice", value: number) => {
+      if (field === "sellingPrice") {
+        setManualUnitPrices((prev) => ({ ...prev, [lineKey]: value }));
+        return;
+      }
+
       setQuoteLines((ql) =>
         ql.map((l) =>
-          l.product.name === productName ? { ...l, [field]: value } : l,
+          productKey(l.product) === lineKey ? { ...l, quantity: value } : l,
         ),
       );
     },
     [],
   );
 
-  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
   const selectedBusinessType =
     businessTypes.find((b) => b.id === filter.businessTypeId) ?? null;
 
@@ -181,7 +255,9 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
         filter={filter}
         onFilterChange={handleFilterChange}
         onLoadProducts={handleLoadProducts}
+        onLoadProductImages={handleLoadProductImages}
         productCount={products.length}
+        productImageCount={Object.keys(productImageUrls).length}
       />
       <SidebarInset className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-background">
         <GlobalHeader
@@ -199,16 +275,18 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
             selectedProducts={selectedProducts}
             maxSelect={filter.maxSelect}
             onToggleProduct={toggleProduct}
+            productImageUrls={productImageUrls}
           />
           <ProposalPane
             selectedProducts={selectedProducts}
             businessTypeLabel={selectedBusinessType?.label ?? null}
+            productImageUrls={productImageUrls}
           />
           <QuotePane
-            selectedProducts={selectedProducts}
-            quoteLines={quoteLines}
+            quoteLines={pricedQuoteLines}
+            activeStore={activeStore}
             stores={stores}
-            selectedStoreId={selectedStoreId}
+            selectedStoreId={activeStoreId}
             settings={settings}
             onStoreChange={handleStoreChange}
             onUpdateQuoteLine={updateQuoteLine}

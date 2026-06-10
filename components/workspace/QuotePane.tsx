@@ -3,13 +3,15 @@
 /**
  * Pane 4: 見積書作成（編集の本拠地）。
  * 店舗を選択すると掛け率が自動適用され、販売価格を手動上書き可能。
- * 印刷ボタンで window.print() を呼ぶ。
  */
 
 import { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Printer, Receipt } from "lucide-react";
+import { Printer, Receipt, Download } from "lucide-react";
 
-import { type Product, type Store, type Settings, type QuoteLine, CATEGORY_ORDER } from "@/lib/schema";
+import { type Store, type Settings, type QuoteLine, CATEGORY_ORDER } from "@/lib/schema";
+import { getCategoryMarkup, productKey } from "@/lib/computed/quote";
+import { printDocument } from "@/lib/print";
+import { downloadQuoteCsv } from "@/lib/data/quote-csv";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,14 +26,14 @@ import {
 import { Pane4Toggle } from "@/components/workspace/Pane4Toggle";
 
 type QuotePaneProps = {
-  selectedProducts: Product[];
   quoteLines: QuoteLine[];
+  activeStore: Store | null;
   stores: Store[];
   selectedStoreId: string | null;
   settings: Settings;
   onStoreChange: (storeId: string | null) => void;
   onUpdateQuoteLine: (
-    productName: string,
+    lineKey: string,
     field: "quantity" | "sellingPrice",
     value: number,
   ) => void;
@@ -57,8 +59,8 @@ function generateQuoteNumber(): string {
 }
 
 export function QuotePane({
-  selectedProducts,
   quoteLines,
+  activeStore,
   stores,
   selectedStoreId,
   settings,
@@ -75,7 +77,7 @@ export function QuotePane({
     return formatDate(d);
   });
 
-  const selectedStore = stores.find((s) => s.id === selectedStoreId) ?? null;
+  const selectedStore = activeStore;
 
   const total = useMemo(
     () => quoteLines.reduce((sum, l) => sum + l.sellingPrice * l.quantity, 0),
@@ -83,6 +85,17 @@ export function QuotePane({
   );
 
   const tax = Math.ceil(total * 0.1);
+
+  function handleDownloadCsv() {
+    downloadQuoteCsv({
+      quoteNumber,
+      date: today,
+      validUntil,
+      store: selectedStore,
+      settings,
+      lines: quoteLines,
+    });
+  }
 
   if (!pane4Open) {
     return (
@@ -96,9 +109,9 @@ export function QuotePane({
   }
 
   return (
-    <div className="flex w-80 shrink-0 flex-col border-l border-border bg-background">
-      {/* ヘッダー */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
+    <div className="flex min-h-0 w-80 shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+      {/* ヘッダー（印刷時は非表示） */}
+      <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3 print:hidden">
         <div className="flex items-center gap-2">
           <Pane4Toggle
             open={pane4Open}
@@ -110,20 +123,38 @@ export function QuotePane({
           </div>
         </div>
         {quoteLines.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => window.print()}
-          >
-            <Printer className="size-3" />
-            印刷
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleDownloadCsv}
+            >
+              <Download className="size-3" />
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => printDocument("quote")}
+            >
+              <Printer className="size-3" />
+              印刷
+            </Button>
+          </div>
         )}
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-4 p-4">
+      <ScrollArea className="min-h-0 flex-1 print:overflow-visible print:h-auto">
+        <div
+          data-print-area="quote"
+          className="flex flex-col gap-4 bg-background p-4 print:p-0"
+        >
+          <div className="mb-2 flex-col gap-1 data-print-only">
+            <h1 className="text-lg font-bold text-foreground">見積書</h1>
+          </div>
+
           {/* 見積基本情報 */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -141,7 +172,9 @@ export function QuotePane({
                 value={validUntil}
                 onChange={(e) => setValidUntil(e.target.value)}
                 className="h-6 w-32 text-right text-xs"
+                data-screen-only
               />
+              <span className="text-xs tabular-nums data-print-only">{validUntil}</span>
             </div>
           </div>
 
@@ -151,33 +184,42 @@ export function QuotePane({
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-foreground">宛先店舗</span>
             {stores.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground" data-screen-only>
                 設定から店舗を追加してください
               </p>
             ) : (
-              <Select
-                value={selectedStoreId ?? ""}
-                onValueChange={(v) => onStoreChange(v || null)}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="店舗を選択..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {stores.map((store) => (
-                    <SelectItem key={store.id} value={store.id} className="text-xs">
-                      {store.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <>
+                <div data-screen-only>
+                  <Select
+                    value={selectedStoreId ?? undefined}
+                    onValueChange={(v) => onStoreChange(v ?? null)}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="店舗を選択..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {stores.map((store) => (
+                        <SelectItem key={store.id} value={store.id} className="text-xs">
+                          {store.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedStore && (
+                  <span className="text-sm font-medium data-print-only">
+                    {selectedStore.name}
+                  </span>
+                )}
+              </>
             )}
             {selectedStore && (
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-0.5" data-screen-only>
                 {CATEGORY_ORDER.map((cat) => {
-                  const m = selectedStore.categoryMarkups[cat];
+                  const m = getCategoryMarkup(selectedStore, cat);
                   return (
                     <span key={cat} className="text-xs text-muted-foreground">
-                      {cat}: ×{(m ?? 1).toFixed(2)}
+                      {cat}: ÷{(m ?? 0.8).toFixed(2)}
                     </span>
                   );
                 })}
@@ -187,8 +229,8 @@ export function QuotePane({
 
           <Separator />
 
-          {/* 明細 */}
-          <div className="flex flex-col gap-2">
+          {/* 明細（画面用） */}
+          <div className="flex flex-col gap-2" data-screen-only>
             <span className="text-xs font-medium text-foreground">明細</span>
             {quoteLines.length === 0 ? (
               <p className="text-xs text-muted-foreground">
@@ -196,9 +238,11 @@ export function QuotePane({
               </p>
             ) : (
               <div className="flex flex-col gap-2">
-                {quoteLines.map((line) => (
+                {quoteLines.map((line, index) => {
+                  const lineKey = productKey(line.product);
+                  return (
                   <div
-                    key={line.product.name}
+                    key={`${lineKey}-${index}`}
                     className="flex flex-col gap-1 rounded-lg bg-muted/50 p-2"
                   >
                     <div className="flex items-baseline justify-between gap-1">
@@ -207,7 +251,7 @@ export function QuotePane({
                       </span>
                       {selectedStore && (
                         <span className="text-[10px] text-muted-foreground shrink-0">
-                          ×{(selectedStore.categoryMarkups[line.product.category] ?? 1).toFixed(2)}
+                          ÷{(getCategoryMarkup(selectedStore, line.product.category) ?? 0.8).toFixed(2)}
                         </span>
                       )}
                     </div>
@@ -221,7 +265,7 @@ export function QuotePane({
                         value={line.quantity}
                         onChange={(e) =>
                           onUpdateQuoteLine(
-                            line.product.name,
+                            lineKey,
                             "quantity",
                             Math.max(1, Number(e.target.value)),
                           )
@@ -237,7 +281,7 @@ export function QuotePane({
                         value={line.sellingPrice}
                         onChange={(e) =>
                           onUpdateQuoteLine(
-                            line.product.name,
+                            lineKey,
                             "sellingPrice",
                             Number(e.target.value),
                           )
@@ -252,10 +296,39 @@ export function QuotePane({
                       </span>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {/* 明細（印刷用テーブル） */}
+          {quoteLines.length > 0 && (
+            <table className="w-full border-collapse text-xs" data-print-only>
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 text-left font-medium">商品名</th>
+                  <th className="w-12 py-2 text-right font-medium">数量</th>
+                  <th className="w-20 py-2 text-right font-medium">単価</th>
+                  <th className="w-24 py-2 text-right font-medium">小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quoteLines.map((line, index) => (
+                  <tr key={`print-${line.product.name}-${index}`} className="border-b border-border/50">
+                    <td className="py-2 pr-2">{line.product.name}</td>
+                    <td className="py-2 text-right tabular-nums">{line.quantity}</td>
+                    <td className="py-2 text-right tabular-nums">
+                      ¥{line.sellingPrice.toLocaleString()}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">
+                      ¥{(line.sellingPrice * line.quantity).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
           {quoteLines.length > 0 && (
             <>

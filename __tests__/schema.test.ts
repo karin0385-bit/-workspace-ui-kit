@@ -5,6 +5,7 @@ const BASE_PRODUCT = {
   name: "純米大吟醸 〇〇",
   maker: "〇〇酒造",
   origin: "長野県",
+  locality: "佐久市",
   costPrice: 2000,
   comment: "フルーティーな香り",
   flavor: "淡麗辛口",
@@ -12,7 +13,6 @@ const BASE_PRODUCT = {
   color: "",
   spark: "",
   body: "",
-  variety: "",
   imageFile: "sake-001.jpg",
   status: "active",
 } as const;
