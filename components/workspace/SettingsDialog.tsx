@@ -73,7 +73,6 @@ export function SettingsDialogContent({
   onSaveStores,
   onSaveSettings,
 }: SettingsDialogContentProps) {
-  const [localSettings, setLocalSettings] = useState<Settings>(settings);
   const [newStoreName, setNewStoreName] = useState("");
   const [newMarkups, setNewMarkups] = useState<CategoryMarkups>({ ...DEFAULT_CATEGORY_MARKUPS });
   const [newPricingModes, setNewPricingModes] = useState<CategoryPricingModes>({
@@ -137,13 +136,11 @@ export function SettingsDialogContent({
   }
 
   function updateSettings(patch: Partial<Settings>) {
-    const next = { ...localSettings, ...patch };
-    setLocalSettings(next);
-    onSaveSettings(next);
+    onSaveSettings({ ...settings, ...patch });
   }
 
   function handleExport() {
-    exportSettingsAsJson(stores, localSettings);
+    exportSettingsAsJson(stores, settings);
   }
 
   function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -180,7 +177,7 @@ export function SettingsDialogContent({
           <FieldLabel htmlFor="settings-company">会社名</FieldLabel>
           <Input
             id="settings-company"
-            value={localSettings.companyName}
+            value={settings.companyName}
             onChange={(e) => updateSettings({ companyName: e.target.value })}
             placeholder="株式会社〇〇酒類"
           />
@@ -189,7 +186,7 @@ export function SettingsDialogContent({
           <FieldLabel htmlFor="settings-address">住所</FieldLabel>
           <Input
             id="settings-address"
-            value={localSettings.address}
+            value={settings.address}
             onChange={(e) => updateSettings({ address: e.target.value })}
             placeholder="〇〇県〇〇市..."
           />
@@ -199,7 +196,7 @@ export function SettingsDialogContent({
             <FieldLabel htmlFor="settings-tel">電話番号</FieldLabel>
             <Input
               id="settings-tel"
-              value={localSettings.tel}
+              value={settings.tel}
             onChange={(e) => updateSettings({ tel: e.target.value })}
               placeholder="03-0000-0000"
             />
@@ -208,7 +205,7 @@ export function SettingsDialogContent({
             <FieldLabel htmlFor="settings-staff">担当者名</FieldLabel>
             <Input
               id="settings-staff"
-              value={localSettings.staffName}
+              value={settings.staffName}
             onChange={(e) => updateSettings({ staffName: e.target.value })}
               placeholder="山田 太郎"
             />
