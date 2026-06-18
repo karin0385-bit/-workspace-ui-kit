@@ -264,13 +264,27 @@ export function BusinessTypePane({
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs text-sidebar-foreground/70">
-                仕入価格の上限（円）
+                仕入価格（円）
               </label>
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
                   min={0}
-                  placeholder="上限なし"
+                  placeholder="下限"
+                  value={filter.minCostPrice ?? ""}
+                  onChange={(e) =>
+                    onFilterChange({
+                      ...filter,
+                      minCostPrice: e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  className="h-7 text-xs"
+                />
+                <span className="shrink-0 text-xs text-sidebar-foreground/50">〜</span>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="上限"
                   value={filter.maxCostPrice ?? ""}
                   onChange={(e) =>
                     onFilterChange({
@@ -280,12 +294,56 @@ export function BusinessTypePane({
                   }
                   className="h-7 text-xs"
                 />
-                {filter.maxCostPrice !== null && (
+                {(filter.minCostPrice !== null || filter.maxCostPrice !== null) && (
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    onClick={() => onFilterChange({ ...filter, maxCostPrice: null })}
-                    aria-label="上限をクリア"
+                    onClick={() => onFilterChange({ ...filter, minCostPrice: null, maxCostPrice: null })}
+                    aria-label="仕入価格をクリア"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-sidebar-foreground/70">
+                小売価格（円）
+              </label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="下限"
+                  value={filter.minRetailPrice ?? ""}
+                  onChange={(e) =>
+                    onFilterChange({
+                      ...filter,
+                      minRetailPrice: e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  className="h-7 text-xs"
+                />
+                <span className="shrink-0 text-xs text-sidebar-foreground/50">〜</span>
+                <Input
+                  type="number"
+                  min={0}
+                  placeholder="上限"
+                  value={filter.maxRetailPrice ?? ""}
+                  onChange={(e) =>
+                    onFilterChange({
+                      ...filter,
+                      maxRetailPrice: e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  className="h-7 text-xs"
+                />
+                {(filter.minRetailPrice !== null || filter.maxRetailPrice !== null) && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onFilterChange({ ...filter, minRetailPrice: null, maxRetailPrice: null })}
+                    aria-label="小売価格をクリア"
                   >
                     <X className="size-3" />
                   </Button>
@@ -312,6 +370,32 @@ export function BusinessTypePane({
                     size="icon-sm"
                     onClick={() => onFilterChange({ ...filter, origin: "" })}
                     aria-label="産地をクリア"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-sidebar-foreground/70">
+                商品名・コメント
+              </label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="text"
+                  placeholder="例: 大信州、やや辛口"
+                  value={filter.keyword}
+                  onChange={(e) =>
+                    onFilterChange({ ...filter, keyword: e.target.value })
+                  }
+                  className="h-7 text-xs"
+                />
+                {filter.keyword && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onFilterChange({ ...filter, keyword: "" })}
+                    aria-label="キーワードをクリア"
                   >
                     <X className="size-3" />
                   </Button>

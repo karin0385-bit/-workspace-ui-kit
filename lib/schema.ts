@@ -180,10 +180,18 @@ export const filterSchema = z.object({
   businessTypeId: businessTypeIdSchema.nullable(),
   /** カテゴリ絞り込み（複数選択可）。空配列 = すべてのカテゴリを対象 */
   categories: z.array(categorySchema),
+  /** 仕入価格の下限（円）。null = 下限なし */
+  minCostPrice: z.number().nullable(),
   /** 仕入価格の上限（円）。null = 上限なし */
   maxCostPrice: z.number().nullable(),
+  /** 小売価格の下限（円）。null = 下限なし */
+  minRetailPrice: z.number().nullable(),
+  /** 小売価格の上限（円）。null = 上限なし */
+  maxRetailPrice: z.number().nullable(),
   /** 産地フィルター（部分一致）。空文字 = フィルターなし */
   origin: z.string(),
+  /** キーワード（商品名・コメント部分一致）。空文字 = フィルターなし */
+  keyword: z.string(),
   /** 提案件数の上限（1〜20）。デフォルト5件。 */
   maxSelect: z.number().int().min(1).max(20),
 });
@@ -192,8 +200,12 @@ export type Filter = z.infer<typeof filterSchema>;
 export const DEFAULT_FILTER: Filter = {
   businessTypeId: null,
   categories: [],
+  minCostPrice: null,
   maxCostPrice: null,
+  minRetailPrice: null,
+  maxRetailPrice: null,
   origin: "",
+  keyword: "",
   maxSelect: 5,
 };
 

@@ -159,13 +159,28 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
     if (filter.categories.length > 0) {
       result = result.filter((p) => filter.categories.includes(p.category));
     }
+    if (filter.minCostPrice !== null) {
+      result = result.filter((p) => p.costPrice >= filter.minCostPrice!);
+    }
     if (filter.maxCostPrice !== null) {
       result = result.filter((p) => p.costPrice <= filter.maxCostPrice!);
+    }
+    if (filter.minRetailPrice !== null) {
+      result = result.filter((p) => p.retailPrice >= filter.minRetailPrice!);
+    }
+    if (filter.maxRetailPrice !== null) {
+      result = result.filter((p) => p.retailPrice <= filter.maxRetailPrice!);
     }
     if (filter.origin.trim() !== "") {
       const kw = filter.origin.trim().toLowerCase();
       result = result.filter((p) =>
         `${p.origin} ${p.locality}`.toLowerCase().includes(kw),
+      );
+    }
+    if (filter.keyword.trim() !== "") {
+      const kw = filter.keyword.trim().toLowerCase();
+      result = result.filter((p) =>
+        p.name.toLowerCase().includes(kw) || p.comment.toLowerCase().includes(kw),
       );
     }
 
