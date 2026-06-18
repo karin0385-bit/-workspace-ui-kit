@@ -136,8 +136,12 @@ export function SettingsDialogContent({
     onSaveStores(next);
   }
 
-  function handleSaveSettings() {
-    onSaveSettings(localSettings);
+  function updateSettings(updater: (s: Settings) => Settings) {
+    setLocalSettings((s) => {
+      const next = updater(s);
+      onSaveSettings(next);
+      return next;
+    });
   }
 
   function handleExport() {
@@ -180,7 +184,7 @@ export function SettingsDialogContent({
             id="settings-company"
             value={localSettings.companyName}
             onChange={(e) =>
-              setLocalSettings((s) => ({ ...s, companyName: e.target.value }))
+              updateSettings((s) => ({ ...s, companyName: e.target.value }))
             }
             placeholder="株式会社〇〇酒類"
           />
@@ -191,7 +195,7 @@ export function SettingsDialogContent({
             id="settings-address"
             value={localSettings.address}
             onChange={(e) =>
-              setLocalSettings((s) => ({ ...s, address: e.target.value }))
+              updateSettings((s) => ({ ...s, address: e.target.value }))
             }
             placeholder="〇〇県〇〇市..."
           />
@@ -202,9 +206,9 @@ export function SettingsDialogContent({
             <Input
               id="settings-tel"
               value={localSettings.tel}
-              onChange={(e) =>
-                setLocalSettings((s) => ({ ...s, tel: e.target.value }))
-              }
+            onChange={(e) =>
+              updateSettings((s) => ({ ...s, tel: e.target.value }))
+            }
               placeholder="03-0000-0000"
             />
           </Field>
@@ -213,23 +217,12 @@ export function SettingsDialogContent({
             <Input
               id="settings-staff"
               value={localSettings.staffName}
-              onChange={(e) =>
-                setLocalSettings((s) => ({ ...s, staffName: e.target.value }))
-              }
+            onChange={(e) =>
+              updateSettings((s) => ({ ...s, staffName: e.target.value }))
+            }
               placeholder="山田 太郎"
             />
           </Field>
-        </div>
-
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSaveSettings}
-          >
-            会社情報を保存
-          </Button>
         </div>
 
         <Separator />
