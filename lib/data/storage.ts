@@ -178,7 +178,20 @@ export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEYS.settings);
     if (!raw) return DEFAULT_SETTINGS;
-    return settingsSchema.parse(JSON.parse(raw));
+    const parsed = JSON.parse(raw) as unknown;
+    const result = settingsSchema.safeParse(parsed);
+    if (result.success) return result.data;
+    // スキーマ検証に失敗しても、取り出せるフィールドだけ使う
+    if (parsed && typeof parsed === "object") {
+      const o = parsed as Record<string, unknown>;
+      return {
+        companyName: typeof o.companyName === "string" ? o.companyName : "",
+        address: typeof o.address === "string" ? o.address : "",
+        tel: typeof o.tel === "string" ? o.tel : "",
+        staffName: typeof o.staffName === "string" ? o.staffName : "",
+      };
+    }
+    return DEFAULT_SETTINGS;
   } catch {
     return DEFAULT_SETTINGS;
   }
