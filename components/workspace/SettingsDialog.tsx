@@ -136,12 +136,10 @@ export function SettingsDialogContent({
     onSaveStores(next);
   }
 
-  function updateSettings(updater: (s: Settings) => Settings) {
-    setLocalSettings((s) => {
-      const next = updater(s);
-      onSaveSettings(next);
-      return next;
-    });
+  function updateSettings(patch: Partial<Settings>) {
+    const next = { ...localSettings, ...patch };
+    setLocalSettings(next);
+    onSaveSettings(next);
   }
 
   function handleExport() {
@@ -183,9 +181,7 @@ export function SettingsDialogContent({
           <Input
             id="settings-company"
             value={localSettings.companyName}
-            onChange={(e) =>
-              updateSettings((s) => ({ ...s, companyName: e.target.value }))
-            }
+            onChange={(e) => updateSettings({ companyName: e.target.value })}
             placeholder="株式会社〇〇酒類"
           />
         </Field>
@@ -194,9 +190,7 @@ export function SettingsDialogContent({
           <Input
             id="settings-address"
             value={localSettings.address}
-            onChange={(e) =>
-              updateSettings((s) => ({ ...s, address: e.target.value }))
-            }
+            onChange={(e) => updateSettings({ address: e.target.value })}
             placeholder="〇〇県〇〇市..."
           />
         </Field>
@@ -206,9 +200,7 @@ export function SettingsDialogContent({
             <Input
               id="settings-tel"
               value={localSettings.tel}
-            onChange={(e) =>
-              updateSettings((s) => ({ ...s, tel: e.target.value }))
-            }
+            onChange={(e) => updateSettings({ tel: e.target.value })}
               placeholder="03-0000-0000"
             />
           </Field>
@@ -217,9 +209,7 @@ export function SettingsDialogContent({
             <Input
               id="settings-staff"
               value={localSettings.staffName}
-            onChange={(e) =>
-              updateSettings((s) => ({ ...s, staffName: e.target.value }))
-            }
+            onChange={(e) => updateSettings({ staffName: e.target.value })}
               placeholder="山田 太郎"
             />
           </Field>
