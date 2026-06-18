@@ -10,7 +10,7 @@
  * Pane 4            : 見積書作成（編集の本拠地）
  */
 
-import { useState, useCallback, useMemo, useLayoutEffect, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 
 import {
   type BusinessType,
@@ -73,7 +73,7 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
   const maxSelectRef = useRef(filter.maxSelect);
   maxSelectRef.current = filter.maxSelect;
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const loadedStores = loadStores();
     setStores(loadedStores);
     setSettings(loadSettings());

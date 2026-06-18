@@ -157,7 +157,6 @@ export function SettingsDialogContent({
       }
       onSaveStores(result.stores);
       onSaveSettings(result.settings);
-      setLocalSettings(result.settings);
     };
     reader.readAsText(file);
     e.target.value = "";
