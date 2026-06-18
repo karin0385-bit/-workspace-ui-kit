@@ -188,3 +188,34 @@ export function saveSettings(settings: Settings): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEYS.settings, JSON.stringify(settings));
 }
+
+// ===== 設定のエクスポート／インポート =====
+
+/** 店舗マスター＋会社設定を JSON ファイルとしてダウンロードする。 */
+export function exportSettingsAsJson(stores: Store[], settings: Settings): void {
+  const data = { stores, settings };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sake-tool-settings-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** JSON テキストから店舗マスター＋会社設定を復元する。失敗時は null を返す。 */
+export function importSettingsFromJson(
+  jsonText: string,
+): { stores: Store[]; settings: Settings } | null {
+  try {
+    const raw = JSON.parse(jsonText) as unknown;
+    if (!raw || typeof raw !== "object") return null;
+    const o = raw as Record<string, unknown>;
+    const stores = parseStoresArray(o.stores);
+    const settingsResult = settingsSchema.safeParse(o.settings);
+    const settings = settingsResult.success ? settingsResult.data : DEFAULT_SETTINGS;
+    return { stores, settings };
+  } catch {
+    return null;
+  }
+}

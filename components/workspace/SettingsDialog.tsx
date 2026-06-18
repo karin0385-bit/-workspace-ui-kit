@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Download, Upload } from "lucide-react";
 
 import {
   type Store,
@@ -14,7 +14,12 @@ import {
   DEFAULT_CATEGORY_MARKUPS,
   DEFAULT_CATEGORY_PRICING_MODES,
 } from "@/lib/schema";
-import { normalizeCategoryMarkups, normalizeCategoryPricingModes } from "@/lib/data/storage";
+import {
+  normalizeCategoryMarkups,
+  normalizeCategoryPricingModes,
+  exportSettingsAsJson,
+  importSettingsFromJson,
+} from "@/lib/data/storage";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -133,6 +138,30 @@ export function SettingsDialogContent({
 
   function handleSaveSettings() {
     onSaveSettings(localSettings);
+  }
+
+  function handleExport() {
+    exportSettingsAsJson(stores, localSettings);
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result;
+      if (typeof text !== "string") return;
+      const result = importSettingsFromJson(text);
+      if (!result) {
+        alert("ファイルの読み込みに失敗しました。正しい設定ファイルを選んでください。");
+        return;
+      }
+      onSaveStores(result.stores);
+      onSaveSettings(result.settings);
+      setLocalSettings(result.settings);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   }
 
   return (
@@ -330,7 +359,29 @@ export function SettingsDialogContent({
       </FieldGroup>
       </ScrollArea>
 
-      <DialogFooter>
+      <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={handleExport}>
+            <Download data-icon="inline-start" />
+            設定を保存
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => document.getElementById("settings-import-input")?.click()}
+          >
+            <Upload data-icon="inline-start" />
+            設定を読込
+          </Button>
+          <input
+            id="settings-import-input"
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImport}
+          />
+        </div>
         <DialogClose render={<Button variant="outline">閉じる</Button>} />
       </DialogFooter>
     </DialogContent>
