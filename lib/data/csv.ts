@@ -2,7 +2,7 @@
  * 在庫 CSV のパースユーティリティ。
  *
  * 期待する CSV ヘッダー行（実ファイル形式）:
- *   商品名, カテゴリ, 色, スパーク, ボディ, メーカー, 産地, 地名, 価格, コメント, 味わい, 画像
+ *   商品名, カテゴリ, 色, スパーク, ボディ, メーカー, 産地, 地名, 容量, 価格, 小売価格, コメント, 味わい, 画像
  *
  * ・文字コード: Shift-JIS（読み込み側で shift_jis 指定）
  * ・「価格」列が仕入価格として使われる
@@ -70,7 +70,11 @@ export function parseCsv(text: string): CsvParseResult {
       maker:     cols[idx("メーカー")]  ?? "",
       origin:    cols[idx("産地")]      ?? "",
       locality:  idx("地名") >= 0 ? (cols[idx("地名")] ?? "") : "",
-      costPrice: Number((cols[idx("価格")] ?? "0").replace(/,/g, "")),
+      costPrice:   Number((cols[idx("価格")] ?? "0").replace(/,/g, "")),
+      retailPrice: idx("小売価格") >= 0
+        ? Number((cols[idx("小売価格")] ?? "0").replace(/,/g, ""))
+        : 0,
+      capacity:    idx("容量") >= 0 ? (cols[idx("容量")] ?? "") : "",
       comment:   cols[idx("コメント")]  ?? "",
       flavor:    cols[idx("味わい")]    ?? "",
       category:  cols[idx("カテゴリ")]  ?? "",

@@ -6,6 +6,7 @@ import {
   type Product,
   type Store,
   type Category,
+  type CategoryPricingMode,
   type QuoteLine,
   DEFAULT_CATEGORY_MARKUPS,
 } from "@/lib/schema";
@@ -35,11 +36,42 @@ export function resolveActiveStore(
   return storeList[0] ?? null;
 }
 
-/** 店舗のカテゴリ別掛け率から販売単価（円・切り上げ）を算出する。仕入価格 ÷ 掛け率。 */
+/** 長野県産ワイン（産地に「長野」を含むワイン）。 */
+export function isNaganoWine(product: Product): boolean {
+  return product.category === "ワイン" && product.origin.includes("長野");
+}
+
+/** 見積単価を小売価格で固定する商品（掛率を適用しない）。 */
+export function usesRetailPrice(product: Product): boolean {
+  return product.category === "日本酒" || isNaganoWine(product);
+}
+
+/** 小売価格を見積単価に使う。未設定時は仕入価格にフォールバック。 */
+export function resolveRetailUnitPrice(product: Product): number {
+  if (product.retailPrice > 0) {
+    return Math.ceil(product.retailPrice);
+  }
+  return Math.ceil(product.costPrice);
+}
+
+/** カテゴリの価格計算モードを取得する（未設定時は cost_divide）。 */
+export function getCategoryPricingMode(
+  store: Store | null | undefined,
+  category: Category,
+): CategoryPricingMode {
+  if (!store?.categoryPricingModes) return "cost_divide";
+  return store.categoryPricingModes[category] ?? "cost_divide";
+}
+
+/** 店舗のカテゴリ別掛け率・モードから販売単価（円・切り上げ）を算出する。 */
 export function calcSellingPrice(
   product: Product,
   store: Store | null | undefined,
 ): number {
+  if (usesRetailPrice(product)) {
+    return resolveRetailUnitPrice(product);
+  }
+
   if (!store) {
     return Math.ceil(product.costPrice);
   }
@@ -47,6 +79,15 @@ export function calcSellingPrice(
   if (markup === null) {
     return Math.ceil(product.costPrice);
   }
+
+  const mode = getCategoryPricingMode(store, product.category);
+  if (mode === "retail_multiply") {
+    if (product.retailPrice > 0) {
+      return Math.ceil(product.retailPrice * markup);
+    }
+    return Math.ceil(product.costPrice);
+  }
+
   return Math.ceil(product.costPrice / markup);
 }
 

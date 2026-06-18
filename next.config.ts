@@ -8,6 +8,8 @@ import path from "node:path";
 const projectRoot = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
+  // iPhone など同一ネットワーク端末から dev サーバーへアクセスするときに必要
+  allowedDevOrigins: ["172.20.10.6"],
   turbopack: {
     root: projectRoot,
   },

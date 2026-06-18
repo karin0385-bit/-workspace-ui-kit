@@ -6,12 +6,15 @@
 import {
   storeSchema,
   settingsSchema,
+  categoryPricingModeSchema,
   DEFAULT_SETTINGS,
   DEFAULT_CATEGORY_MARKUPS,
+  DEFAULT_CATEGORY_PRICING_MODES,
   CATEGORY_ORDER,
   type Store,
   type Settings,
   type CategoryMarkups,
+  type CategoryPricingModes,
   type Category,
 } from "@/lib/schema";
 
@@ -88,6 +91,20 @@ export function normalizeCategoryMarkups(
   return result;
 }
 
+/** categoryPricingModes を正規化する（不正値・欠損はデフォルト値で補完）。 */
+export function normalizeCategoryPricingModes(raw: unknown): CategoryPricingModes {
+  const result = { ...DEFAULT_CATEGORY_PRICING_MODES };
+  if (!raw || typeof raw !== "object") return result;
+  const m = raw as Record<string, unknown>;
+  for (const cat of CATEGORY_ORDER) {
+    const parsed = categoryPricingModeSchema.safeParse(m[cat]);
+    if (parsed.success) {
+      result[cat as Category] = parsed.data;
+    }
+  }
+  return result;
+}
+
 function parseStoreCandidate(raw: unknown): Store | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -95,6 +112,7 @@ function parseStoreCandidate(raw: unknown): Store | null {
     id: typeof o.id === "string" ? o.id : String(o.id ?? ""),
     name: typeof o.name === "string" ? o.name : "",
     categoryMarkups: normalizeCategoryMarkups(o.categoryMarkups, o.markup),
+    categoryPricingModes: normalizeCategoryPricingModes(o.categoryPricingModes),
   };
   const parsed = storeSchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;

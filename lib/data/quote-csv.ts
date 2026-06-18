@@ -8,7 +8,7 @@ import {
   type Store,
   type Settings,
 } from "@/lib/schema";
-import { getCategoryMarkup } from "@/lib/computed/quote";
+import { getCategoryMarkup, getCategoryPricingMode, usesRetailPrice } from "@/lib/computed/quote";
 
 export type QuoteExportInput = {
   quoteNumber: string;
@@ -21,6 +21,13 @@ export type QuoteExportInput = {
 
 /** 明細行に適用した掛け率（店舗マスター値。未設定時は販売単価から逆算）。 */
 export function getLineMarkup(line: QuoteLine, store: Store | null): number {
+  if (usesRetailPrice(line.product)) {
+    if (line.product.costPrice > 0) {
+      return Math.round((line.product.costPrice / line.sellingPrice) * 100) / 100;
+    }
+    return 1;
+  }
+
   const fromStore = store ? getCategoryMarkup(store, line.product.category) : null;
   if (fromStore !== null) {
     return fromStore;
@@ -29,6 +36,19 @@ export function getLineMarkup(line: QuoteLine, store: Store | null): number {
     return Math.round((line.product.costPrice / line.sellingPrice) * 100) / 100;
   }
   return 1;
+}
+
+/** CSV 出力用の掛け率表示（小売価格固定の行は「小売」、×係数の行は「×0.90」形式）。 */
+export function formatLineMarkup(line: QuoteLine, store: Store | null): string {
+  if (usesRetailPrice(line.product)) {
+    return "小売";
+  }
+  const mode = getCategoryPricingMode(store, line.product.category);
+  if (mode === "retail_multiply") {
+    const markup = store ? getCategoryMarkup(store, line.product.category) : null;
+    return `×${(markup ?? 0.8).toFixed(2)}`;
+  }
+  return getLineMarkup(line, store).toFixed(2);
 }
 
 function escapeCsvCell(value: string | number): string {
@@ -58,9 +78,11 @@ export function buildQuoteCsv(input: QuoteExportInput): string {
     "",
     row([
       "商品名",
+      "容量",
       "カテゴリ",
       "メーカー",
       "仕入価格",
+      "小売価格",
       "掛け率",
       "販売単価",
       "数量",
@@ -69,14 +91,15 @@ export function buildQuoteCsv(input: QuoteExportInput): string {
   ];
 
   const detailRows = lines.map((line) => {
-    const markup = getLineMarkup(line, store);
     const lineSubtotal = line.sellingPrice * line.quantity;
     return row([
       line.product.name,
+      line.product.capacity,
       line.product.category,
       line.product.maker,
       line.product.costPrice,
-      markup.toFixed(2),
+      line.product.retailPrice,
+      formatLineMarkup(line, store),
       line.sellingPrice,
       line.quantity,
       lineSubtotal,
@@ -85,9 +108,9 @@ export function buildQuoteCsv(input: QuoteExportInput): string {
 
   const footerRows = [
     "",
-    row(["", "", "", "", "", "小計", "", subtotal]),
-    row(["", "", "", "", "", "消費税（10%）", "", tax]),
-    row(["", "", "", "", "", "合計（税込）", "", grandTotal]),
+    row(["", "", "", "", "", "", "", "小計", "", subtotal]),
+    row(["", "", "", "", "", "", "", "消費税（10%）", "", tax]),
+    row(["", "", "", "", "", "", "", "合計（税込）", "", grandTotal]),
   ];
 
   return [...headerRows, ...detailRows, ...footerRows].join("\r\n");

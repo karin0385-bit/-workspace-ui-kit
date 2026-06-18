@@ -9,7 +9,7 @@ import { useState, useMemo } from "react";
 import { Printer, Receipt, Download } from "lucide-react";
 
 import { type Store, type Settings, type QuoteLine, CATEGORY_ORDER } from "@/lib/schema";
-import { getCategoryMarkup, productKey } from "@/lib/computed/quote";
+import { getCategoryMarkup, getCategoryPricingMode, productKey, usesRetailPrice } from "@/lib/computed/quote";
 import { printDocument } from "@/lib/print";
 import { downloadQuoteCsv } from "@/lib/data/quote-csv";
 import { Button } from "@/components/ui/button";
@@ -247,13 +247,21 @@ export function QuotePane({
                   >
                     <div className="flex items-baseline justify-between gap-1">
                       <span className="text-xs font-medium text-foreground leading-tight">
-                        {line.product.name}
+                        {line.product.capacity
+                          ? `${line.product.name}（${line.product.capacity}）`
+                          : line.product.name}
                       </span>
-                      {selectedStore && (
+                      {usesRetailPrice(line.product) ? (
                         <span className="text-[10px] text-muted-foreground shrink-0">
-                          ÷{(getCategoryMarkup(selectedStore, line.product.category) ?? 0.8).toFixed(2)}
+                          小売価格
                         </span>
-                      )}
+                      ) : selectedStore ? (
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {getCategoryPricingMode(selectedStore, line.product.category) === "retail_multiply"
+                            ? `×${(getCategoryMarkup(selectedStore, line.product.category) ?? 0.8).toFixed(2)} 小売`
+                            : `÷${(getCategoryMarkup(selectedStore, line.product.category) ?? 0.8).toFixed(2)}`}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <label className="text-[10px] text-muted-foreground shrink-0">
@@ -316,7 +324,11 @@ export function QuotePane({
               <tbody>
                 {quoteLines.map((line, index) => (
                   <tr key={`print-${line.product.name}-${index}`} className="border-b border-border/50">
-                    <td className="py-2 pr-2">{line.product.name}</td>
+                    <td className="py-2 pr-2">
+                      {line.product.capacity
+                        ? `${line.product.name}（${line.product.capacity}）`
+                        : line.product.name}
+                    </td>
                     <td className="py-2 text-right tabular-nums">{line.quantity}</td>
                     <td className="py-2 text-right tabular-nums">
                       ¥{line.sellingPrice.toLocaleString()}

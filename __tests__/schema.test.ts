@@ -7,6 +7,8 @@ const BASE_PRODUCT = {
   origin: "長野県",
   locality: "佐久市",
   costPrice: 2000,
+  retailPrice: 3000,
+  capacity: "720",
   comment: "フルーティーな香り",
   flavor: "淡麗辛口",
   category: "日本酒",

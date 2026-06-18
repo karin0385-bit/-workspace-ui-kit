@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildQuoteCsv, getLineMarkup } from "@/lib/data/quote-csv";
+import { buildQuoteCsv, formatLineMarkup, getLineMarkup } from "@/lib/data/quote-csv";
 import { DEFAULT_CATEGORY_MARKUPS, type QuoteLine, type Store } from "@/lib/schema";
 
 const store: Store = {
@@ -15,6 +15,8 @@ const line: QuoteLine = {
     origin: "長野県",
     locality: "佐久市",
     costPrice: 2000,
+    retailPrice: 2500,
+    capacity: "720ml",
     comment: "",
     flavor: "辛口",
     category: "日本酒",
@@ -29,8 +31,12 @@ const line: QuoteLine = {
 };
 
 describe("getLineMarkup", () => {
-  it("店舗マスターの掛け率を返す", () => {
+  it("日本酒は販売単価から実効掛け率を返す", () => {
     expect(getLineMarkup(line, store)).toBe(0.8);
+  });
+
+  it("日本酒の CSV 表示は小売とする", () => {
+    expect(formatLineMarkup(line, store)).toBe("小売");
   });
 });
 
@@ -54,7 +60,8 @@ describe("buildQuoteCsv", () => {
     expect(csv).toContain("20250608-001");
     expect(csv).toContain("テスト店");
     expect(csv).toContain("純米大吟醸 〇〇");
-    expect(csv).toContain("0.80");
+    expect(csv).toContain("小売");
+    expect(csv).toContain("720ml");
     expect(csv).toContain("5000");
     expect(csv).toContain("5500");
   });

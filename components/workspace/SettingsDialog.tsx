@@ -7,11 +7,14 @@ import {
   type Store,
   type Settings,
   type CategoryMarkups,
+  type CategoryPricingModes,
+  type CategoryPricingMode,
   storeSchema,
   CATEGORY_ORDER,
   DEFAULT_CATEGORY_MARKUPS,
+  DEFAULT_CATEGORY_PRICING_MODES,
 } from "@/lib/schema";
-import { normalizeCategoryMarkups } from "@/lib/data/storage";
+import { normalizeCategoryMarkups, normalizeCategoryPricingModes } from "@/lib/data/storage";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent,
@@ -33,6 +36,32 @@ type SettingsDialogContentProps = {
   onSaveSettings: (settings: Settings) => void;
 };
 
+/** カテゴリ行の計算モードトグルボタン（÷仕入 ↔ ×小売）。 */
+function ModeToggle({
+  mode,
+  onToggle,
+}: {
+  mode: CategoryPricingMode;
+  onToggle: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={onToggle}
+      title={
+        mode === "cost_divide"
+          ? "仕入÷掛率（クリックで小売×係数に切替）"
+          : "小売×係数（クリックで仕入÷掛率に切替）"
+      }
+      className="h-7 w-14 shrink-0 px-1 text-[10px] font-medium tabular-nums"
+    >
+      {mode === "cost_divide" ? "÷仕入" : "×小売"}
+    </Button>
+  );
+}
+
 export function SettingsDialogContent({
   stores,
   settings,
@@ -42,6 +71,9 @@ export function SettingsDialogContent({
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
   const [newStoreName, setNewStoreName] = useState("");
   const [newMarkups, setNewMarkups] = useState<CategoryMarkups>({ ...DEFAULT_CATEGORY_MARKUPS });
+  const [newPricingModes, setNewPricingModes] = useState<CategoryPricingModes>({
+    ...DEFAULT_CATEGORY_PRICING_MODES,
+  });
 
   function handleAddStore() {
     const name = newStoreName.trim();
@@ -49,11 +81,13 @@ export function SettingsDialogContent({
       id: `s-${Date.now()}`,
       name,
       categoryMarkups: newMarkups,
+      categoryPricingModes: newPricingModes,
     });
     if (!result.success) return;
     onSaveStores([...stores, result.data]);
     setNewStoreName("");
     setNewMarkups({ ...DEFAULT_CATEGORY_MARKUPS });
+    setNewPricingModes({ ...DEFAULT_CATEGORY_PRICING_MODES });
   }
 
   function handleDeleteStore(id: string) {
@@ -75,6 +109,24 @@ export function SettingsDialogContent({
         }),
       });
       return parsed.success ? parsed.data : store;
+    });
+    onSaveStores(next);
+  }
+
+  function handleToggleStorePricingMode(
+    storeId: string,
+    category: (typeof CATEGORY_ORDER)[number],
+  ) {
+    const next = stores.map((store) => {
+      if (store.id !== storeId) return store;
+      const currentModes = normalizeCategoryPricingModes(store.categoryPricingModes);
+      const current = currentModes[category];
+      const toggled: CategoryPricingMode =
+        current === "cost_divide" ? "retail_multiply" : "cost_divide";
+      return {
+        ...store,
+        categoryPricingModes: { ...currentModes, [category]: toggled },
+      };
     });
     onSaveStores(next);
   }
@@ -157,52 +209,60 @@ export function SettingsDialogContent({
         <Field>
           <FieldLabel>店舗マスター</FieldLabel>
           <p className="text-xs text-muted-foreground">
-            販売単価 = 仕入価格 ÷ 掛け率（例: 仕入 800 円・0.8 → 1,000 円）
+            数値ボタンで計算方式を切り替えられます：<br />
+            <span className="font-medium">÷仕入</span> = 仕入価格÷掛率　
+            <span className="font-medium">×小売</span> = 小売価格×係数
           </p>
           <ScrollArea className="max-h-52">
             <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-              {stores.map((store) => (
-                <div key={store.id} className="px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{store.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => handleDeleteStore(store.id)}
-                      aria-label={`${store.name} を削除`}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 />
-                    </Button>
+              {stores.map((store) => {
+                const modes = normalizeCategoryPricingModes(store.categoryPricingModes);
+                return (
+                  <div key={store.id} className="px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{store.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => handleDeleteStore(store.id)}
+                        aria-label={`${store.name} を削除`}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                      {CATEGORY_ORDER.map((cat) => (
+                        <div key={cat} className="flex items-center gap-1">
+                          <label className="w-20 shrink-0 truncate text-xs text-muted-foreground">
+                            {cat}
+                          </label>
+                          <Input
+                            type="number"
+                            min={0.01}
+                            max={1}
+                            step={0.01}
+                            value={store.categoryMarkups[cat]}
+                            onChange={(e) =>
+                              handleUpdateStoreMarkup(
+                                store.id,
+                                cat,
+                                parseFloat(e.target.value) || 0.8,
+                              )
+                            }
+                            className="h-7 w-14 text-center text-xs"
+                          />
+                          <ModeToggle
+                            mode={modes[cat]}
+                            onToggle={() => handleToggleStorePricingMode(store.id, cat)}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5">
-                    {CATEGORY_ORDER.map((cat) => (
-                      <div key={cat} className="flex items-center gap-1.5">
-                        <label className="w-24 shrink-0 truncate text-xs text-muted-foreground">
-                          {cat}
-                        </label>
-                        <Input
-                          type="number"
-                          min={0.01}
-                          max={1}
-                          step={0.01}
-                          value={store.categoryMarkups[cat]}
-                          onChange={(e) =>
-                            handleUpdateStoreMarkup(
-                              store.id,
-                              cat,
-                              parseFloat(e.target.value) || 0.8,
-                            )
-                          }
-                          className="h-7 w-16 text-center text-xs"
-                        />
-                        <span className="text-xs text-muted-foreground">÷</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {stores.length === 0 && (
                 <div className="px-3 py-4 text-center text-sm text-muted-foreground">
                   店舗がありません
@@ -223,8 +283,8 @@ export function SettingsDialogContent({
             />
             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
               {CATEGORY_ORDER.map((cat) => (
-                <div key={cat} className="flex items-center gap-1.5">
-                  <label className="w-24 shrink-0 text-xs text-muted-foreground truncate">
+                <div key={cat} className="flex items-center gap-1">
+                  <label className="w-20 shrink-0 text-xs text-muted-foreground truncate">
                     {cat}
                   </label>
                   <Input
@@ -239,9 +299,18 @@ export function SettingsDialogContent({
                         [cat]: parseFloat(e.target.value) || 0.8,
                       }))
                     }
-                    className="h-7 w-16 text-center text-xs"
+                    className="h-7 w-14 text-center text-xs"
                   />
-                  <span className="text-xs text-muted-foreground">÷</span>
+                  <ModeToggle
+                    mode={newPricingModes[cat]}
+                    onToggle={() =>
+                      setNewPricingModes((prev) => ({
+                        ...prev,
+                        [cat]:
+                          prev[cat] === "cost_divide" ? "retail_multiply" : "cost_divide",
+                      }))
+                    }
+                  />
                 </div>
               ))}
             </div>

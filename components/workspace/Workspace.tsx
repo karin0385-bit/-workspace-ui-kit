@@ -279,6 +279,7 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
           />
           <ProposalPane
             selectedProducts={selectedProducts}
+            quoteLines={pricedQuoteLines}
             businessTypeLabel={selectedBusinessType?.label ?? null}
             productImageUrls={productImageUrls}
           />

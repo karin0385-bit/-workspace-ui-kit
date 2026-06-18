@@ -49,7 +49,7 @@ export type BusinessType = z.infer<typeof businessTypeSchema>;
  * 在庫 CSV の1行。ブラウザ上で CSV を読み込んだ後にパースして使う。
  *
  * CSV 列順（ヘッダー行必須）:
- *   商品名, カテゴリ, 色, スパーク, ボディ, メーカー, 産地, 地名, 価格, コメント, 味わい, 画像
+ *   商品名, カテゴリ, 色, スパーク, ボディ, メーカー, 産地, 地名, 容量, 価格, 小売価格, コメント, 味わい, 画像
  */
 export const productSchema = z.object({
   /** 商品名 */
@@ -62,6 +62,10 @@ export const productSchema = z.object({
   locality: z.string(),
   /** 仕入価格（円）。CSV では「価格」列。 */
   costPrice: z.number(),
+  /** 小売価格（円）。CSV「小売価格」列。日本酒・長野県ワインの見積単価に使用。 */
+  retailPrice: z.number(),
+  /** 容量（例: 720ml）。空欄可。 */
+  capacity: z.string(),
   /** 商品コメント */
   comment: z.string(),
   /** 味わい */
@@ -108,13 +112,44 @@ export const DEFAULT_CATEGORY_MARKUPS: CategoryMarkups = {
   シードル: 0.8,
 };
 
-/** 得意先店舗。カテゴリ別に掛け率を管理する。 */
+/**
+ * カテゴリ別の価格計算モード。
+ * - cost_divide   : 仕入価格 ÷ 掛率（例: 仕入 800 ÷ 0.8 = 1,000 円）
+ * - retail_multiply: 小売価格 × 係数（例: 小売 1,000 × 0.9 = 900 円）
+ */
+export const categoryPricingModeSchema = z.enum(["cost_divide", "retail_multiply"]);
+export type CategoryPricingMode = z.infer<typeof categoryPricingModeSchema>;
+
+export const categoryPricingModesSchema = z.object({
+  日本酒: categoryPricingModeSchema,
+  ワイン: categoryPricingModeSchema,
+  焼酎: categoryPricingModeSchema,
+  ウイスキー: categoryPricingModeSchema,
+  ジン: categoryPricingModeSchema,
+  ビール: categoryPricingModeSchema,
+  シードル: categoryPricingModeSchema,
+});
+export type CategoryPricingModes = z.infer<typeof categoryPricingModesSchema>;
+
+export const DEFAULT_CATEGORY_PRICING_MODES: CategoryPricingModes = {
+  日本酒: "cost_divide",
+  ワイン: "cost_divide",
+  焼酎: "cost_divide",
+  ウイスキー: "cost_divide",
+  ジン: "cost_divide",
+  ビール: "cost_divide",
+  シードル: "cost_divide",
+};
+
+/** 得意先店舗。カテゴリ別に掛け率と価格計算モードを管理する。 */
 export const storeSchema = z.object({
   id: z.string(),
   /** 店舗名 */
   name: z.string(),
   /** カテゴリ別掛け率 */
   categoryMarkups: categoryMarkupsSchema,
+  /** カテゴリ別価格計算モード（省略時は全カテゴリ cost_divide） */
+  categoryPricingModes: categoryPricingModesSchema.optional(),
 });
 export type Store = z.infer<typeof storeSchema>;
 

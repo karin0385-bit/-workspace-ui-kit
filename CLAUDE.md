@@ -1,3 +1,8 @@
+---
+description: 
+alwaysApply: true
+---
+
 # workspace-ui-kit
 
 採用管理ドメインの **4ペイン Next.js 16 × shadcn/ui ワークスペース雛形**。
