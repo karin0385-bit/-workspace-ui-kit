@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -62,6 +62,10 @@ ${productLines}
 （全商品分）
 
 丁寧すぎず、温かみのある文体でお願いします。`;
+
+    const google = createGoogleGenerativeAI({
+      apiKey: process.env.GEMINI_API_KEY ?? "",
+    });
 
     const { text } = await generateText({
       model: google("gemini-1.5-flash"),
