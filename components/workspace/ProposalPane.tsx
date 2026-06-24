@@ -5,21 +5,25 @@
  * 選択された商品の画像・商品名・味わい・コメントと見積単価を表示する。
  */
 
-import { Printer, FileText } from "lucide-react";
+import { useState } from "react";
+import { Printer, FileText, Sparkles } from "lucide-react";
 
-import { type Product, type QuoteLine } from "@/lib/schema";
+import { type Product, type QuoteLine, type Settings } from "@/lib/schema";
 import { productKey } from "@/lib/computed/quote";
 import { printDocument } from "@/lib/print";
 import { ProductImage } from "@/components/primitives/ProductImage";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 type ProposalPaneProps = {
   selectedProducts: Product[];
   quoteLines: QuoteLine[];
   businessTypeLabel: string | null;
   productImageUrls?: Readonly<Record<string, string>>;
+  settings: Settings;
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -41,10 +45,49 @@ export function ProposalPane({
   quoteLines,
   businessTypeLabel,
   productImageUrls,
+  settings,
 }: ProposalPaneProps) {
+  const [customerName, setCustomerName] = useState("");
+  const [customerMemo, setCustomerMemo] = useState("");
+  const [proposalText, setProposalText] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const unitPriceByKey = new Map(
     quoteLines.map((line) => [productKey(line.product), line.sellingPrice]),
   );
+
+  async function handleGenerate() {
+    if (selectedProducts.length === 0) return;
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/generate-proposal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessTypeLabel: businessTypeLabel ?? "",
+          customerName,
+          customerMemo,
+          companyName: settings.companyName,
+          staffName: settings.staffName,
+          products: selectedProducts.map((p) => ({
+            name: p.name,
+            category: p.category,
+            origin: p.origin,
+            locality: p.locality,
+            flavor: p.flavor,
+            comment: p.comment,
+          })),
+        }),
+      });
+      const data = await res.json() as { text?: string; error?: string };
+      if (data.text) setProposalText(data.text);
+      else alert(data.error ?? "生成に失敗しました");
+    } catch {
+      alert("通信エラーが発生しました");
+    } finally {
+      setIsGenerating(false);
+    }
+  }
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-r border-border bg-background">
@@ -88,6 +131,46 @@ export function ProposalPane({
               <h1 className="text-lg font-bold text-foreground">提案書</h1>
               {businessTypeLabel && (
                 <p className="text-sm text-muted-foreground">{businessTypeLabel}</p>
+              )}
+            </div>
+
+            {/* AI 提案文 */}
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 print:border-none print:p-0">
+              <div className="flex flex-col gap-1.5 print:hidden">
+                <Input
+                  placeholder="お客様名（例: 山田レストラン 山田様）"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="h-7 text-xs"
+                />
+                <Input
+                  placeholder="お客様のご要望（例: 魚料理に合う辛口、予算3000円以内）"
+                  value={customerMemo}
+                  onChange={(e) => setCustomerMemo(e.target.value)}
+                  className="h-7 text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={isGenerating || selectedProducts.length === 0}
+                  className="self-start gap-1.5 text-xs"
+                >
+                  <Sparkles className="size-3" />
+                  {isGenerating ? "生成中..." : "AI で提案文を生成"}
+                </Button>
+              </div>
+              {proposalText && (
+                <>
+                  <Separator className="print:hidden" />
+                  <Textarea
+                    value={proposalText}
+                    onChange={(e) => setProposalText(e.target.value)}
+                    className="min-h-40 text-xs leading-relaxed print:border-none print:p-0 print:resize-none"
+                    placeholder="AI が生成した提案文がここに表示されます"
+                  />
+                </>
               )}
             </div>
 

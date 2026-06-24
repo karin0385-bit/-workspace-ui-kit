@@ -297,6 +297,7 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
             quoteLines={pricedQuoteLines}
             businessTypeLabel={selectedBusinessType?.label ?? null}
             productImageUrls={productImageUrls}
+            settings={settings}
           />
           <QuotePane
             quoteLines={pricedQuoteLines}
