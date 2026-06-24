@@ -64,13 +64,14 @@ ${productLines}
 丁寧すぎず、温かみのある文体でお願いします。`;
 
     const { text } = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: google("gemini-1.5-flash"),
       prompt,
     });
 
     return NextResponse.json({ text });
   } catch (error) {
-    console.error("generate-proposal error:", error);
-    return NextResponse.json({ error: "生成に失敗しました" }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("generate-proposal error:", message);
+    return NextResponse.json({ error: `生成に失敗しました: ${message}` }, { status: 500 });
   }
 }
