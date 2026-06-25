@@ -402,6 +402,32 @@ export function BusinessTypePane({
                 )}
               </div>
             </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-sidebar-foreground/70">
+                容量（部分一致）
+              </label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="text"
+                  placeholder="例: 720、1800"
+                  value={filter.capacity}
+                  onChange={(e) =>
+                    onFilterChange({ ...filter, capacity: e.target.value })
+                  }
+                  className="h-7 text-xs"
+                />
+                {filter.capacity && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onFilterChange({ ...filter, capacity: "" })}
+                    aria-label="容量をクリア"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

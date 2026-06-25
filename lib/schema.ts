@@ -192,6 +192,8 @@ export const filterSchema = z.object({
   origin: z.string(),
   /** キーワード（商品名・コメント部分一致）。空文字 = フィルターなし */
   keyword: z.string(),
+  /** 容量（部分一致）。例: "720"、"1800"。空文字 = フィルターなし */
+  capacity: z.string(),
   /** 提案件数の上限（1〜20）。デフォルト5件。 */
   maxSelect: z.number().int().min(1).max(20),
 });
@@ -206,6 +208,7 @@ export const DEFAULT_FILTER: Filter = {
   maxRetailPrice: null,
   origin: "",
   keyword: "",
+  capacity: "",
   maxSelect: 5,
 };
 

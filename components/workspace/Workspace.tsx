@@ -183,6 +183,10 @@ export function Workspace({ businessTypes, workspaceName }: WorkspaceProps) {
         p.name.toLowerCase().includes(kw) || p.comment.toLowerCase().includes(kw),
       );
     }
+    if (filter.capacity.trim() !== "") {
+      const kw = filter.capacity.trim().toLowerCase();
+      result = result.filter((p) => p.capacity.toLowerCase().includes(kw));
+    }
 
     const bt = businessTypes.find((b) => b.id === filter.businessTypeId);
     if (bt) {
