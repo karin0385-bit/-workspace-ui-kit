@@ -1,4 +1,4 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { generateText } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -63,12 +63,12 @@ ${productLines}
 
 丁寧すぎず、温かみのある文体でお願いします。`;
 
-    const google = createGoogleGenerativeAI({
-      apiKey: process.env.GEMINI_API_KEY ?? "",
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY ?? "",
     });
 
     const { text } = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       prompt,
     });
 
