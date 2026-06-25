@@ -10,6 +10,8 @@ const projectRoot = path.resolve(__dirname);
 const nextConfig: NextConfig = {
   // iPhone など同一ネットワーク端末から dev サーバーへアクセスするときに必要
   allowedDevOrigins: ["172.20.10.6"],
+  // Vercel Toolbar・パフォーマンス計測オーバーレイを非表示にする
+  devIndicators: false,
   turbopack: {
     root: projectRoot,
   },
